@@ -1,0 +1,56 @@
+1.RDD与普通集合有那些区别
+  RDD里面记录的是描述信息（从哪里读取数据，以后对数据如何进行计算）/RDD的方法分为两类Transformation（lazy）、action（生成提示框，并发送到Executor中执行）
+  Scala存储的事真正要计算的数据
+
+  1.一系列的分区
+  2.每一个输入切片会有一个函数作用在上面
+  3.RDD和RDD之间存在依赖关系（是父RDD调用什么方法，传入哪些函数得到的）
+  4.（可选）RDD中如果存储的是kv，shuffle是会有一个分区器，模式hash partitioner
+  5.（可选）如果是读取HDFS长得数据，那么会有一个最优位置
+
+  （目前RDD可以认为是没有存放真实数据的“集合”）
+
+
+  combineByKey算子：
+    在测试时使用sparkshell会是过程简单在生产环境中需要将代码至少写在文件中保存
+    在数据量很大时使用groupByKey聚合数据时会产生大量的shuffer，浪费网络资源
+    在处理集群中的kv数据时shuffer的作用是将k相同的数据拉到同一台机器上 进行下一步操作
+
+    第一个函数的功能：
+      将分好组的key的第一个value取出来进行操作
+    第二个函数的功能：
+      在每个区中，将value中的其他元素加入进来
+    第三个函数的功能：
+      [通过shuffer将key相同的数据放在同一台机器上,在shuffer操作时可以指定分区数量,RDD默认的分区数量与其父RDD的分区数量一致
+      在进行参数传入是必须要将参数类型也传入]
+
+2.作业思路总结
+  1题按平常的Wordcount程序写就可以了
+  2题将URL中有关于学科的字段切分出来与题1中teacher字段组成元组作为key,1作为value再组成元组然后进行WordCount操作即可,在分组时先按整个(subject,teacher)为key进行聚合在按subject进行分组
+  take取某几个数据时,是在据群上就排好了并且在任务完成后将数据按take的数据的个数返回
+  第一种方法(在分组求topn时使用Scala集合排序)适合于数据量少时  优点是程序简单代码量小构思简单
+  第二种方法(在求topn时使用RDD的排序)适合于数据量大时  优点是可以解决上面的方法中数据量大实惠发生内存溢出的状况(如果发生有中间结果多次使用时可以使用cache将中间变量放在内存中之后再使用时直接使用该数据)
+  [分区器的作用是决定上有数据如何到下游的规则,其是一个类]
+  第三种方法:自定义分区器,并按照该分区器进行分区//partitionBy按照指定的分区规则进行分区     spark中的driver相当于mapreduce中的APPmaster起上下游数据传递得相关事宜.
+  mapPartition传入输出均为迭代器
+  在数据量大时需要谨慎通过使用tolist进行排序(tolist会将数据存放在内存中数据量大时会发生内存溢出,在必要时可以通过使用RDD进行排序)
+  shuffer:reduceBykey    partitionBy 可将这两个shuffer进行合并可减少shuffer的数量
+  解决问题:即排序,又不全部加载到内存当中
+          1.将数据放在可排序的集合当中
+查看一个程序会产生多少个RDD:
+  1.
+
+
+
+
+输sc读文件是textFile中的参数是spark支持的文件系统的URI
+读取文件后会生成一个HadoopRDD+mapPartitionsRDD
+flatMap 产生一个mapPartitionsRDD
+map产生一个mapPartitionsRDD
+reduceByKey 产生一个shuffedRDD
+saveAsFile  产生一个mapPartitionsRDD
+共生成两种task shuffermapTask和resultTask(相当于maptask和reducetask)
+在shuffer为界限 分为两个阶段   程序分阶段执行
+说如果没shuffer时则仅有一个task即reducetask
+在shuffer产生的结果一定得写到磁盘位置(本地或者hdfs上)
+将本阶段执行完后才能执行下一个阶段的工作流程为就水线作业
