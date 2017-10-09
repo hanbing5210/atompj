@@ -1,0 +1,96 @@
+spark
+  spark是个计算框架只负责计算。
+  MAPREDUCE的编程模型过时了但是hadoop中除了MAPREDUCE模块外均无法替代hadoop
+  spark在计算上会比MAPREDUCE快很多（在内存上会快几十倍，在磁盘上会快5+倍）
+  spark有DAG可以同时处理很多算子，并且在处理数据时可以将中间数据存放在内存中
+  sparksql处理结构化数据
+  mesos资源调度框架
+  stansalone（spark自带资源调度框架）
+  Cassandra，hbase nosql数据库
+  s3亚马逊简单存储服务
+学习spark
+  可以将中间结果存放到内存中
+  MAPREDUCE将中间结果存放到磁盘
+  计算方式：内存+磁盘计算
+  3.通用
+  4.兼容性
+  spark安装部署
+  spark可以独立于文件系统及模块
+  spark安装在
+配置spark
+  spark-ev.sh
+    export JAVA_HOME=
+    export SPARK_MASTER_HOST=node4（192.168.1.204）
+    export SPARK_MASTER_PORT=7077
+    spark管理页面端口号：8080
+
+    for i in {5..8};do scp -r .... node-$i:$PWD;done
+    start-all.sh 启动spark时会在本地启动一个master
+
+
+  解决单点故障时使用zk，其作用是；
+    1.选举active master
+    2.保存活跃master的信息
+    3.保存所有worker德玺源信息，和资源使用情况（为了故障切换）
+  程序运行快慢取决于运算资源（核数和内存）
+   在启动多个master时standby的master没有具体的资源信息当原alive master 被done掉时新的master会将原master的alive的worker的信息接收过来
+
+  启动高可用集群
+    1.启动zookeeper集群
+    2.启动spark集群（此时集群中只有一个master另一个需要手动启动）
+    在做高可用是需要做监控既在集群中仅有1个master时会向管理员报警，提示管理员对master进行维护使之再次成为高可用
+  项目提交
+    提交一个spark到集群运行
+    命令的相对路径 --master   --class  全类名  jar包位置 执行次数（这十个参数参数的含义会应程序不同而不同）
+    在执行时会在提交任务的机器上启动sparksubmit进程并在集群上的每个机器上启动运算的进程，并且在执行完后会释放资源
+    Executor进程时spark的运算进程有worker启动
+    --executor-memory  在jar包前，写表示运行spark运行时使用内存的大小
+    --totel-executor-cores在jar包前写，表示整个app使用的总核数
+  提交一个spark程序到SAP人口集群时会产生的进程
+    SparkSubmit（driver）提交任务
+    Executor执行真正计算任务的
+    提交任务可以指定多个master地址，目的是为了保证任务高可用
+
+  编写spark程序时可以使用sparkshell（交互式命令行，方便学习和测试，也是一个客户端用于提交spark应用程序。scala的交互式窗口）
+    仅调用spark-shell时是使用本地模式（模拟spark集群核心功能）。在启动spark-shell时添加master参数可以指定master所在的机器使spark程序运行在spark集群上
+    使用spark-shell提交的任务的名字是spark0-shell    需要执行的进程会在程序执行前完成创建
+
+    当启动spark-shell时制定了master地址是，会将任务提交到spark集群上执行，开始sparksubmit要连接master，并申请计算资源（内存和核数）
+  spark中的进程
+    只有一个master时会将worker的资源信息持久化到本地磁盘  在高可用模式下会将worker持久化到zookeeper上
+    sparksubmit启动后会添加任务，然后向master申请资源
+    master负责资源调度 就是分配资源，就是讲executor在那些worker上启动     master和worker进行rpc通信，让worker启动executor（将分区的参数传过去 ）executor和driver通信   真正的运算逻辑是在driver端的
+    driver会生成task，然后通过安国发送给executor，然后再executor中执行真正的计算逻辑
+    executor启动后会主动链接driver （通过master-》worker-》微信二次元进行而知道driver在哪里）
+
+
+  分布式框架大多时主从结构（yarn于spark的关系）
+    yarn
+      resourcemanager资源管理器
+      nodemanager（节点管理器）
+      yarnchild
+      client
+      APPmaster
+      会有一个客户端将任务提交到yarn上的resourcemanager上运行，然后通知nodemanager启动一个applicationmaster容器 在APPmaster向resourcemanager申请资源后通过nodemanager启动yarnchild进程，然后yarnchild将运行进度反馈给APPmaster
+    spark（standalone）
+      master 管理子节点并进行资源分配接收任务请求
+      worker 管理当前节点，并管理子进程
+      executor 运行真正的计算逻辑
+      sparksubmit（client+APPmaster）提交app管理该任务的executor，并将task提交到集群（executor中）
+    spark和scala在写Wordcount时函数及其功能相同但是底层实现不同。
+    变量定义时要见名识意，便于后期维护
+    APPname一定要设置便于在spark管理界面查看
+    java8中添加了类似与函数式编程的
+    java9添加了函数是编程模块和jshell
+
+
+
+  spark本地调试
+    在本地调试时设置master为local默认为一个线程可在local后加数字使用[n|*]来表示多线程运行
+
+
+
+
+    用idea编写spark程序
+    创建RDD,然后对 RDD进行才做（调用RDD的方法，方法分为两类，一个叫Transformation（ｌａｚｙ），一个类叫做Action（会触发ｔａｓｋ））
+    rdd上的

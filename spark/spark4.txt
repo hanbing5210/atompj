@@ -1,0 +1,9 @@
+RDD对应一个task,题得分去对应的task只能在一台机器里面(在executor),一台机器上可以有多个分去对应的task
+分组topn:
+  1.聚合后按学科进行分组,然后在每个分组中进行排序(调用的Scala集合的排序)
+  2.先按学科进行过滤,然后调用RDD的方法进行排序(内存+磁盘+多台机器),需要将任务条件多次
+  3.自定义分区,然后在每个分区中进行排序(partitionBy,mapPartitions)
+  4.在聚合时就是用聚合分区尅减少分区
+  5.自定义分区,mapPartitions在调用mapPartitions的时候定义一个可排序的集合
+Wordcount的执行就成
+  共6个RDD,2个stage, 不改变RDD的分区时会生成6个task否则生成的task的数量不一定

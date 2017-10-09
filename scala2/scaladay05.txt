@@ -1,0 +1,11 @@
+akka
+  开发高并发的一个工具包
+  模型  actor
+    actor 和actor可以通信 通信方式为传递消息（mail）
+    ActorSystem的作用是创建监控Actor
+    actor于actor不能直接通信需通过ActorRef
+    每个Actor的mailbox
+spark master worker通信原理
+  见笔记本上总结
+使用schedule是需导入dispatcher
+  
