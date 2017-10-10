@@ -1,0 +1,35 @@
+cache方法，没有生成新的RDD，也没有出发任务执行 ，只会标记该RDD分区对饮的数据（第一次触发Action时）放入到内存
+
+checkpoint方法，没有生成新的RDD，没有触发新的action，也是标记以后触发Action时会将数据保存到HDFS中
+
+
+根据IP地址计算归属地
+    IP转换成十进制
+    二分法查找
+    广播变量（先进行广播，在计算数据）【一旦广播出去，变量中的数据就不可改变】如果需要说是改变的规则，可以将规则放到redis中
+    foreach和foreachPartition是action，会触发任务提交（Action的特点是会触发任务，有数据计算出的结果产生）
+    collect，take，count，（收集到Driver端的Action）
+
+----------------------------------------------------------------------------------------------------------------------
+
+自定义排序
+  将数据封装在一个类中时该类需要实现序列化
+
+
+
+
+spark支持多种数据源在读取数据时可以不使用sqoop将数据导出
+在集群上sql语句会在每个分区上有执行一次
+ RDD第一阶段构建DAG
+ RDD第二阶段将DAG切分成若干个Stage 使用DAGScheduler
+
+ DAG：有向无环图
+
+
+
+
+ spark执行流程
+  1.构建DAG（调用RDD上的方法）
+  2.DAGScheduler将DAG切分成Stage将Stage重生成task以taskset的的形式给taskScheduler（依据时shuffer）
+  3.taskScheduler调度task（根据资源情况将task调度到相应的executor中执行）
+  4.executor接受task然后将task丢入线程池中执行
