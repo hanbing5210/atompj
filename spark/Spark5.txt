@@ -23,13 +23,58 @@ spark支持多种数据源在读取数据时可以不使用sqoop将数据导出
  RDD第一阶段构建DAG
  RDD第二阶段将DAG切分成若干个Stage 使用DAGScheduler
 
- DAG：有向无环图
+spark执行流程
+  1.构建DAG（调用RDD上的方法）                  Driver端执行
+  2.DAGScheduler将DAG切分成Stage将Stage重生成task以taskset的的形式给taskScheduler（依据时shuffer）            Driver端执行
+  3.taskScheduler调度task（根据资源情况将task调度到相应的executor中执行）            Driver端执行
+  4.executor接受task然后将task丢入线程池中执行         Executor端执行
+
+一个RDD只是描述了数据计算过程中的一个环节，而DAG由一到多个RDD组成，描述了数据计算过程中的所有环节（过程）
+
+
+ DAG：有向无环图（描述RDD转换过程）
+  数据执行过程中有方向但是不能形成闭环（输入和输出不在一个目录中     在hdfs中的输出目录必须是个空目录就可证明）
+DAG描述了多个RDD的转换过程，任务执行时，可以按照DAG的描述执行真正的计算（数据被操作的过程）
+DAG有边界 ：开始（通过SparkContext创建RDD），结束（触发Action，调用run Job就是一个完整的DAG就形成了）
+一个Spark Application中有多少个DAG：至少1个（具体数量取决于触发了多少次Action）
+
+---------------------------------------------------------------------------------
+一个DAG中可能产生多种不同类型和功能的Task，会有不同的阶段
+ DAGScherduler：将一个DAG切分成一到多个Stage，DAGScheduler切分的依据是shuffle（宽依赖）
+为什么要切分Stage？
+    一个复杂的业务逻辑（将多台机器具有相同属性的数据聚合到一台机上：shuffle），如果有shuffle，那么就意味着前面产生的结果后，才能执行下一个阶段，下一个阶段d的计算依赖上一个阶段的数据。
+    在同一个Stage中，会有多个算子，同一个Stage中的多个算子可以合并在一起，我们称之为pipeline（流水线：严格按照流程，顺序执行）
+
+
+
+窄依赖
+  map,filter,union,jion
+
+有网络传出不一定是shuffle
+shuffle： 定义
+    shuffle的含义是洗牌，父RDD一个分区中的数据如果给了子RDD的多个分区（只要存在可能），就是shuffle
+    shuffle会有网络传输数据，但是有网路数据传输，并不意味着就是shuffle
+宽依赖：
+    父RDD一个分区中的数据分到多个子RDD中     shuffle属于宽依赖的一种
 
 
 
 
- spark执行流程
-  1.构建DAG（调用RDD上的方法）
-  2.DAGScheduler将DAG切分成Stage将Stage重生成task以taskset的的形式给taskScheduler（依据时shuffer）
-  3.taskScheduler调度task（根据资源情况将task调度到相应的executor中执行）
-  4.executor接受task然后将task丢入线程池中执行
+jion（很特殊，即可是宽依赖，也可是窄依赖）
+    宽依赖：父RDD一个分区向多个子RDD分区传输数据时即为宽依赖（即使是有可能）【通常情况下join是宽依赖】
+    窄依赖：父RDD一个分区向一个子RDD分区纯属苏数据即为窄依赖【join处理数据之前先分组时为窄依赖（分区器相同）】
+    {task是由class创建的实例}
+
+
+
+
+
+1.driver跟master建立简介并申请资源
+2.master进行资源调度
+3.master和worker进行rpc通信，让worker启动executor
+4.worker启动executor
+5.executor回合Driver进行通信
+6.RDD触发Action后，会根据最后的这个RDD从后往前推依赖关系，遇到shuffle就切分Stage，会使用递归切分，递归的出口时这个RDD再也没有父RDD
+7.提交时   DAGScheduler切分完Stage后，先提交前面的Stage，执行完了在提交后面的Stage，Stage会生成task。一个Stage会生成很多业务逻辑相同的task，然后将以taskset的形式传递给taskScheduler，然后taskScheduler会将task序列化，根据资源情况 ，发送给executor
+8. 发送task
+9. executor接受到task后，现将task反序列化，然后将task用一个实现了Runnable接口的实现类包装起来，然后将改包装类对入到线程池中，然后包装类的run方法就会被执行，进而调用task的计算逻辑
