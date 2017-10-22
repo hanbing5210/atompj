@@ -31,7 +31,7 @@ spark
   解决单点故障时使用zk，其作用是；
     1.选举active master
     2.保存活跃master的信息
-    3.保存所有worker德玺源信息，和资源使用情况（为了故障切换）
+    3.保存所有workerde的源信息，和资源使用情况（为了故障切换）
   程序运行快慢取决于运算资源（核数和内存）
    在启动多个master时standby的master没有具体的资源信息当原alive master 被done掉时新的master会将原master的alive的worker的信息接收过来
 
